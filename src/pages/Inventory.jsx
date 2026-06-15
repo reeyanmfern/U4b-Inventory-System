@@ -154,18 +154,26 @@ export default function Inventory() {
     e.preventDefault()
     setLoading(true)
 
+    // Sanitize: convert empty strings to null for integer/numeric fields
+    const sanitized = {
+      ...formData,
+      weight_grams: formData.weight_grams === '' || formData.weight_grams === null ? null : parseInt(formData.weight_grams) || null,
+      price: formData.price === '' || formData.price === null ? 0 : parseFloat(formData.price) || 0,
+      quantity: formData.quantity === '' || formData.quantity === null ? 0 : parseInt(formData.quantity) || 0,
+    }
+
     try {
       if (editingProduct) {
         const { error } = await supabase
           .from('products')
-          .update(formData)
+          .update(sanitized)
           .eq('id', editingProduct.id)
         
         if (error) throw error
       } else {
         const { error } = await supabase
           .from('products')
-          .insert([formData])
+          .insert([sanitized])
         
         if (error) throw error
       }
