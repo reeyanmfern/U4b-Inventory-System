@@ -29,7 +29,10 @@ export default function Transactions() {
     product_id: '',
     quantity: 1,
     person_name: '',
-    receipt_url: ''
+    receipt_url: '',
+    unit_price: '',
+    discount_percent: '',
+    final_price: ''
   })
 
   useEffect(() => {
@@ -76,7 +79,7 @@ export default function Transactions() {
   }
 
   function openSaleModal() {
-    setSaleData({ event_name: '', product_id: '', quantity: 1, person_name: '', receipt_url: '' })
+    setSaleData({ event_name: '', product_id: '', quantity: 1, person_name: '', receipt_url: '', unit_price: '', discount_percent: '', final_price: '' })
     setReceiptPreview(null)
     fetchProducts()
     setShowSaleModal(true)
@@ -159,7 +162,11 @@ export default function Transactions() {
           quantity: saleData.quantity,
           type: 'checkout',
           person_name: saleData.person_name.trim(),
-          receipt_url: saleData.receipt_url || null
+          receipt_url: saleData.receipt_url || null,
+          unit_price: unitPrice || null,
+          discount_percent: discountPct || null,
+          discount_amount: discountAmount || null,
+          final_price: computedFinalPrice || null
         }])
 
       if (txError) throw txError
@@ -174,7 +181,7 @@ export default function Transactions() {
       await fetchTransactions()
       setShowSaleModal(false)
       setReceiptPreview(null)
-      setSaleData({ event_name: '', product_id: '', quantity: 1, person_name: '', receipt_url: '' })
+      setSaleData({ event_name: '', product_id: '', quantity: 1, person_name: '', receipt_url: '', unit_price: '', discount_percent: '', final_price: '' })
     } catch (error) {
       alert('Error recording sale: ' + error.message)
     } finally {
@@ -297,7 +304,10 @@ export default function Transactions() {
       'Quantity': tx.quantity,
       'Person In Charge': tx.person_name || '-',
       'Price (RM)': tx.products?.price || '-',
-      'Total (RM)': ((tx.products?.price || 0) * tx.quantity).toLocaleString(),
+      'Unit Price (RM)': tx.unit_price || tx.products?.price || '-',
+      'Discount (%)': tx.discount_percent || 0,
+      'Final Price (RM)': tx.final_price || tx.products?.price || '-',
+      'Total (RM)': ((tx.final_price ?? tx.products?.price ?? 0) * tx.quantity).toLocaleString(),
       'Receipt': tx.receipt_url ? 'Yes' : 'No'
     }))
 
@@ -312,9 +322,21 @@ export default function Transactions() {
 
   const totalSales = filteredTransactions.length
   const totalItems = filteredTransactions.reduce((sum, t) => sum + t.quantity, 0)
-  const totalRevenue = filteredTransactions.reduce((sum, t) => sum + ((t.products?.price || 0) * t.quantity), 0)
+  const totalRevenue = filteredTransactions.reduce((sum, t) => {
+    const price = t.final_price ?? (t.products?.price || 0)
+    return sum + price * t.quantity
+  }, 0)
 
   const selectedProduct = products.find(p => p.id === saleData.product_id)
+
+  // Computed pricing values
+  const unitPrice = parseFloat(saleData.unit_price) || 0
+  const discountPct = parseFloat(saleData.discount_percent) || 0
+  const discountAmount = unitPrice * (discountPct / 100)
+  const computedFinalPrice = parseFloat(saleData.final_price) !== '' && saleData.final_price !== ''
+    ? parseFloat(saleData.final_price)
+    : Math.max(0, unitPrice - discountAmount)
+  const totalAmount = computedFinalPrice * (parseInt(saleData.quantity) || 1)
 
   if (loading) {
     return (
@@ -468,7 +490,12 @@ export default function Transactions() {
                     </td>
                     <td className="py-3 px-4 font-semibold text-gray-900 text-sm">{tx.quantity}</td>
                     <td className="py-3 px-4 text-sm text-gray-700">
-                      {((tx.products?.price || 0) * tx.quantity).toLocaleString()}
+                      {((tx.final_price ?? tx.products?.price ?? 0) * tx.quantity).toLocaleString()}
+                      {tx.discount_percent > 0 && (
+                        <span className="ml-1.5 text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
+                          -{tx.discount_percent}%
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-700">{tx.person_name || '-'}</td>
                     <td className="py-3 px-4">
@@ -548,7 +575,10 @@ export default function Transactions() {
                 <select
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-gray-50 focus:bg-white transition-colors"
                   value={saleData.product_id}
-                  onChange={(e) => setSaleData({ ...saleData, product_id: e.target.value, quantity: 1 })}
+                  onChange={(e) => {
+                    const product = products.find(p => p.id === e.target.value)
+                    setSaleData({ ...saleData, product_id: e.target.value, quantity: 1, unit_price: product?.price || '', discount_percent: '', final_price: '' })
+                  }}
                   required
                 >
                   <option value="">Select product</option>
@@ -576,10 +606,70 @@ export default function Transactions() {
                 />
                 {selectedProduct && (
                   <p className="text-xs text-gray-400 mt-1">
-                    Total: RM {((selectedProduct.price || 0) * saleData.quantity).toLocaleString()}
+                    Inventory price: RM {selectedProduct.price || 0}
                   </p>
                 )}
               </div>
+
+              {/* Pricing */}
+              {selectedProduct && (
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold text-gray-700">Pricing</p>
+
+                  {/* Unit Price */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Unit Price (RM)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white transition-colors"
+                      value={saleData.unit_price}
+                      onChange={(e) => setSaleData({ ...saleData, unit_price: e.target.value, final_price: '' })}
+                      placeholder={`Default: RM ${selectedProduct.price || 0}`}
+                    />
+                  </div>
+
+                  {/* Discount */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Discount (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white transition-colors"
+                        value={saleData.discount_percent}
+                        onChange={(e) => setSaleData({ ...saleData, discount_percent: e.target.value, final_price: '' })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Final Price (RM)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white transition-colors"
+                        value={saleData.final_price}
+                        onChange={(e) => setSaleData({ ...saleData, final_price: e.target.value, discount_percent: '' })}
+                        placeholder={`RM ${computedFinalPrice.toFixed(2)}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      {discountPct > 0 && `${discountPct}% off — save RM ${discountAmount.toFixed(2)}`}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
+                      Total: RM {totalAmount.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Person in charge */}
               <div>
