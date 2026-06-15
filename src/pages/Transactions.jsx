@@ -17,6 +17,10 @@ export default function Transactions() {
   const [showSaleModal, setShowSaleModal] = useState(false)
   const [showClearAllModal, setShowClearAllModal] = useState(false)
   const [clearingAll, setClearingAll] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingTx, setEditingTx] = useState(null)
+  const [editData, setEditData] = useState({})
+  const [editSubmitting, setEditSubmitting] = useState(false)
   const [products, setProducts] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -262,6 +266,80 @@ export default function Transactions() {
     }
   }
 
+  function openEditModal(tx) {
+    setEditingTx(tx)
+    setEditData({
+      event_name: tx.event_name || '',
+      quantity: tx.quantity,
+      person_name: tx.person_name || '',
+      unit_price: tx.unit_price ?? tx.products?.price ?? '',
+      discount_percent: tx.discount_percent || '',
+      final_price: tx.final_price || ''
+    })
+    setShowEditModal(true)
+  }
+
+  async function handleEditSubmit(e) {
+    e.preventDefault()
+    setEditSubmitting(true)
+
+    const unitP = parseFloat(editData.unit_price) || 0
+    const discPct = parseFloat(editData.discount_percent) || 0
+    const discAmt = unitP * (discPct / 100)
+    const finalP = editData.final_price !== '' && editData.final_price !== null
+      ? parseFloat(editData.final_price)
+      : Math.max(0, unitP - discAmt)
+
+    try {
+      // Handle quantity change — adjust stock accordingly
+      const qtyDiff = parseInt(editData.quantity) - editingTx.quantity
+      if (qtyDiff !== 0 && editingTx.product_id) {
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('quantity')
+          .eq('id', editingTx.product_id)
+          .single()
+
+        if (productError) throw productError
+
+        const newProductQty = product.quantity - qtyDiff
+        if (newProductQty < 0) {
+          alert(`Not enough stock! Only ${product.quantity} unit(s) available.`)
+          setEditSubmitting(false)
+          return
+        }
+
+        await supabase
+          .from('products')
+          .update({ quantity: newProductQty })
+          .eq('id', editingTx.product_id)
+      }
+
+      const { error } = await supabase
+        .from('transactions')
+        .update({
+          event_name: editData.event_name.trim(),
+          quantity: parseInt(editData.quantity),
+          person_name: editData.person_name.trim(),
+          unit_price: unitP || null,
+          discount_percent: discPct || null,
+          discount_amount: discAmt || null,
+          final_price: finalP || null
+        })
+        .eq('id', editingTx.id)
+
+      if (error) throw error
+
+      await fetchTransactions()
+      setShowEditModal(false)
+      setEditingTx(null)
+    } catch (error) {
+      alert('Error updating transaction: ' + error.message)
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
   function applyFilters() {
     let filtered = [...transactions]
 
@@ -323,7 +401,7 @@ export default function Transactions() {
   const totalSales = filteredTransactions.length
   const totalItems = filteredTransactions.reduce((sum, t) => sum + t.quantity, 0)
   const totalRevenue = filteredTransactions.reduce((sum, t) => {
-    const price = t.final_price ?? (t.products?.price || 0)
+    const price = t.final_price ?? t.unit_price ?? t.products?.price ?? 0
     return sum + price * t.quantity
   }, 0)
 
@@ -459,6 +537,7 @@ export default function Transactions() {
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Event</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Price</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total (RM)</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Person in Charge</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Receipt</th>
@@ -468,7 +547,7 @@ export default function Transactions() {
             <tbody className="divide-y divide-gray-50">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-12 text-gray-400 text-sm">
+                  <td colSpan="9" className="text-center py-12 text-gray-400 text-sm">
                     No transactions found
                   </td>
                 </tr>
@@ -489,8 +568,11 @@ export default function Transactions() {
                       </span>
                     </td>
                     <td className="py-3 px-4 font-semibold text-gray-900 text-sm">{tx.quantity}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">
+                      RM {(tx.unit_price ?? tx.products?.price ?? 0).toFixed(2)}
+                    </td>
                     <td className="py-3 px-4 text-sm text-gray-700">
-                      {((tx.final_price ?? tx.products?.price ?? 0) * tx.quantity).toLocaleString()}
+                      RM {((tx.final_price ?? tx.unit_price ?? tx.products?.price ?? 0) * tx.quantity).toFixed(2)}
                       {tx.discount_percent > 0 && (
                         <span className="ml-1.5 text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
                           -{tx.discount_percent}%
@@ -516,15 +598,26 @@ export default function Transactions() {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <button
-                        onClick={() => handleDeleteTransaction(tx)}
-                        className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete transaction"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => openEditModal(tx)}
+                          className="text-gray-400 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit transaction"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTransaction(tx)}
+                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete transaction"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -783,6 +876,139 @@ export default function Transactions() {
                       Recording...
                     </span>
                   ) : 'Record Sale'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {showEditModal && editingTx && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-6 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Edit Transaction</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">Update sale details</p>
+                </div>
+                <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+              {/* Product — read only */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Product</label>
+                <div className="w-full px-4 py-2.5 border border-gray-100 rounded-xl bg-gray-50 text-sm text-gray-500">
+                  {editingTx.products?.code || editingTx.products?.name || '-'}
+                  {editingTx.products?.size ? ` (${editingTx.products.size})` : ''}
+                </div>
+              </div>
+
+              {/* Event Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Event Name</label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-gray-50 focus:bg-white transition-colors"
+                  value={editData.event_name}
+                  onChange={(e) => setEditData({ ...editData, event_name: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Quantity</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-gray-50 focus:bg-white transition-colors"
+                  value={editData.quantity}
+                  onChange={(e) => setEditData({ ...editData, quantity: e.target.value })}
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-1">Changing quantity will adjust stock automatically</p>
+              </div>
+
+              {/* Person in Charge */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Person in Charge</label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-gray-50 focus:bg-white transition-colors"
+                  value={editData.person_name}
+                  onChange={(e) => setEditData({ ...editData, person_name: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Pricing */}
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <p className="text-sm font-semibold text-gray-700">Pricing</p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Unit Price (RM)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white transition-colors"
+                    value={editData.unit_price}
+                    onChange={(e) => setEditData({ ...editData, unit_price: e.target.value, final_price: '' })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Discount (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white transition-colors"
+                      value={editData.discount_percent}
+                      onChange={(e) => setEditData({ ...editData, discount_percent: e.target.value, final_price: '' })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Final Price (RM)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white transition-colors"
+                      value={editData.final_price}
+                      onChange={(e) => setEditData({ ...editData, final_price: e.target.value, discount_percent: '' })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm disabled:opacity-60"
+                >
+                  {editSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Saving...
+                    </span>
+                  ) : 'Save Changes'}
                 </button>
               </div>
             </form>
