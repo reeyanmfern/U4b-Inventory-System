@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import * as XLSX from 'xlsx'
 
 // ─── Shared input style ────────────────────────────────────────────────────
-const INPUT = "w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm bg-slate-50 focus:bg-white transition-colors"
+const INPUT = "w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#3C78A0] focus:border-[#3C78A0] outline-none text-sm bg-slate-50 focus:bg-white transition-colors"
 const LABEL = "block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide"
 
 export default function Inventory() {
@@ -181,7 +181,7 @@ export default function Inventory() {
       <div className="page-header px-6 py-6 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-indigo-400 text-xs font-semibold uppercase tracking-widest mb-1">Catalog</p>
+            <p className="text-[#5A96BE] text-xs font-semibold uppercase tracking-widest mb-1">Catalog</p>
             <h1 className="text-2xl font-bold text-white">Inventory</h1>
             <p className="text-white/40 text-sm mt-0.5">{products.length} products · {totalStock.toLocaleString()} units · RM {totalValue.toLocaleString()} value</p>
           </div>
@@ -190,7 +190,7 @@ export default function Inventory() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               Export
             </button>
-            <button onClick={() => { resetForm(); setShowModal(true) }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold transition-colors shadow-lg shadow-indigo-500/30">
+            <button onClick={() => { resetForm(); setShowModal(true) }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3C78A0] hover:bg-[#5A96BE] text-white text-sm font-semibold transition-colors shadow-lg shadow-[#3C78A0]/30">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               Add Product
             </button>
@@ -204,13 +204,13 @@ export default function Inventory() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M19 11a8 8 0 11-16 0 8 8 0 0116 0z" /></svg>
-              <input type="text" placeholder="Search products…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors" />
+              <input type="text" placeholder="Search products…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#3C78A0] focus:border-[#3C78A0] outline-none transition-colors" />
             </div>
-            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors">
+            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-[#3C78A0] outline-none transition-colors">
               {categories.map(c => <option key={c}>{c}</option>)}
             </select>
             {(searchTerm || selectedCategory !== 'All') && (
-              <button onClick={() => { setSearchTerm(''); setSelectedCategory('All') }} className="px-3 py-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium">Clear</button>
+              <button onClick={() => { setSearchTerm(''); setSelectedCategory('All') }} className="px-3 py-2 text-sm text-[#3C78A0] hover:text-[#2C5F80] font-medium">Clear</button>
             )}
           </div>
           <p className="text-xs text-slate-400 mt-2">{filteredProducts.length} of {products.length} products</p>
@@ -218,7 +218,7 @@ export default function Inventory() {
 
         {/* Products */}
         {loading ? (
-          <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>
+          <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-[#3C78A0] border-t-transparent rounded-full animate-spin"></div></div>
         ) : filteredProducts.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm text-center py-16">
             <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-3">
@@ -233,7 +233,7 @@ export default function Inventory() {
               const hasVariations = product.product_variations?.length > 0
               const totalProductStock = hasVariations ? product.product_variations.reduce((s, v) => s + (v.quantity || 0), 0) : (product.quantity || 0)
               return (
-                <div key={product.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:border-indigo-200 transition-colors">
+                <div key={product.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:border-[#A0C8DC] transition-colors">
                   <div className="p-5">
                     <div className="flex gap-4">
                       {/* Image */}
@@ -254,7 +254,7 @@ export default function Inventory() {
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${product.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{product.status}</span>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
-                              {product.code && <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">{product.code}</span>}
+                              {product.code && <span className="text-xs font-mono font-bold text-[#3C78A0] bg-[#EBF4FA] px-1.5 py-0.5 rounded">{product.code}</span>}
                               {product.main_sku && <span className="text-xs text-slate-400">SKU: {product.main_sku}</span>}
                               <span className="text-xs text-slate-400">{product.category}{product.sub_category && ` · ${product.sub_category}`}</span>
                               {product.size && product.size !== 'One Size' && <span className="text-xs text-slate-400">{product.size}</span>}
@@ -272,7 +272,7 @@ export default function Inventory() {
                                 <button onClick={() => openProductStockModal(product, 'remove')} className="w-7 h-7 rounded-lg bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center font-bold text-base transition-colors">−</button>
                               </div>
                             )}
-                            <button onClick={() => editProduct(product)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                            <button onClick={() => editProduct(product)} className="p-2 text-slate-400 hover:text-[#3C78A0] hover:bg-[#EBF4FA] rounded-lg transition-colors">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
                             <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
@@ -406,9 +406,9 @@ export default function Inventory() {
               {/* Image upload */}
               <div className="mt-4">
                 <label className={LABEL}>Product Image</label>
-                <div className="border-2 border-dashed border-slate-200 rounded-xl p-5 text-center hover:border-indigo-300 transition-colors" onPaste={handlePaste}>
+                <div className="border-2 border-dashed border-slate-200 rounded-xl p-5 text-center hover:border-[#A0C8DC] transition-colors" onPaste={handlePaste}>
                   <svg className="w-7 h-7 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  <p className="text-xs text-slate-400">Paste image (Ctrl+V) or <button type="button" onClick={() => imageInputRef.current?.click()} className="text-indigo-600 hover:underline">upload file</button></p>
+                  <p className="text-xs text-slate-400">Paste image (Ctrl+V) or <button type="button" onClick={() => imageInputRef.current?.click()} className="text-[#3C78A0] hover:underline">upload file</button></p>
                   <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async e => { const f = e.target.files[0]; if (f) { const url = await uploadImage(f); if (url) setFormData({ ...formData, image_url: url }) } }} />
                 </div>
                 {formData.image_url && (
@@ -417,12 +417,12 @@ export default function Inventory() {
                     <button type="button" onClick={() => setFormData({ ...formData, image_url: '' })} className="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 hover:bg-rose-600 text-white rounded-full text-xs font-bold flex items-center justify-center">✕</button>
                   </div>
                 )}
-                {uploading && <p className="text-xs text-indigo-600 mt-2 flex items-center gap-1.5"><span className="w-3 h-3 border border-indigo-600 border-t-transparent rounded-full animate-spin inline-block"></span>Uploading…</p>}
+                {uploading && <p className="text-xs text-[#3C78A0] mt-2 flex items-center gap-1.5"><span className="w-3 h-3 border border-indigo-600 border-t-transparent rounded-full animate-spin inline-block"></span>Uploading…</p>}
               </div>
 
               <div className="flex gap-3 mt-6">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-colors shadow-lg shadow-indigo-500/20">Save Product</button>
+                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-[#3C78A0] hover:bg-[#2C5F80] text-white font-semibold text-sm transition-colors shadow-lg shadow-[#3C78A0]/20">Save Product</button>
               </div>
             </form>
           </div>

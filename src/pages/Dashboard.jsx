@@ -58,7 +58,7 @@ export default function Dashboard() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-8 h-8 border-2 border-[#3C78A0] border-t-transparent rounded-full animate-spin"></div>
     </div>
   )
 
@@ -71,7 +71,7 @@ export default function Dashboard() {
   ]
 
   const colorMap = {
-    indigo: { bar: 'bg-indigo-500', icon: 'bg-indigo-50 text-indigo-600', val: 'text-indigo-700' },
+    indigo: { bar: 'bg-[#3C78A0]', icon: 'bg-[#EBF4FA] text-[#3C78A0]', val: 'text-[#2C5F80]' },
     emerald: { bar: 'bg-emerald-500', icon: 'bg-emerald-50 text-emerald-600', val: 'text-emerald-700' },
     violet: { bar: 'bg-violet-500', icon: 'bg-violet-50 text-violet-600', val: 'text-violet-700' },
     amber: { bar: 'bg-amber-500', icon: 'bg-amber-50 text-amber-600', val: 'text-amber-700' },
@@ -82,7 +82,7 @@ export default function Dashboard() {
     <div className="flex flex-col h-full">
       {/* Page Header */}
       <div className="page-header px-6 py-6 flex-shrink-0">
-        <p className="text-indigo-400 text-xs font-semibold uppercase tracking-widest mb-1">Overview</p>
+        <p className="text-[#5A96BE] text-xs font-semibold uppercase tracking-widest mb-1">Overview</p>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
         <p className="text-white/40 text-sm mt-0.5">Real-time inventory snapshot</p>
       </div>

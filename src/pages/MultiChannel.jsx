@@ -78,7 +78,7 @@ export default function MultiChannel() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-8 h-8 border-2 border-[#3C78A0] border-t-transparent rounded-full animate-spin"></div>
     </div>
   )
 
@@ -88,7 +88,7 @@ export default function MultiChannel() {
       <div className="page-header px-6 py-6 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-indigo-400 text-xs font-semibold uppercase tracking-widest mb-1">Distribution</p>
+            <p className="text-[#5A96BE] text-xs font-semibold uppercase tracking-widest mb-1">Distribution</p>
             <h1 className="text-2xl font-bold text-white">Multi-Channel</h1>
             <p className="text-white/40 text-sm mt-0.5">Stock allocation across all sales channels</p>
           </div>
@@ -119,9 +119,9 @@ export default function MultiChannel() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M19 11a8 8 0 11-16 0 8 8 0 0116 0z" /></svg>
-              <input type="text" placeholder="Search products…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors" />
+              <input type="text" placeholder="Search products…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#3C78A0] focus:border-[#3C78A0] outline-none transition-colors" />
             </div>
-            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-[#3C78A0] outline-none">
               {categories.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
@@ -149,7 +149,7 @@ export default function MultiChannel() {
                   <tr key={p.id} className={i % 2 === 0 ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/50 hover:bg-slate-100/50'}>
                     <td className="py-3 px-5">
                       <p className="font-semibold text-slate-800">{p.name}</p>
-                      {p.code && <p className="text-[10px] font-mono text-indigo-500 mt-0.5">{p.code}</p>}
+                      {p.code && <p className="text-[10px] font-mono text-[#3C78A0] mt-0.5">{p.code}</p>}
                     </td>
                     <td className="py-3 px-4 text-slate-500">{p.category}</td>
                     <td className="py-3 px-4 text-right font-bold text-violet-700">{getChannelStock(p, 'u4b').toLocaleString()}</td>

@@ -8,43 +8,32 @@
   }
 
   body {
-    @apply bg-[#F0F2F8] min-h-screen;
+    @apply bg-[#EEF2F5] min-h-screen;
     font-feature-settings: "cv02","cv03","cv04","cv11";
   }
 
-  /* Tabular nums for all data cells */
   td, .tabular {
     font-variant-numeric: tabular-nums;
   }
 }
 
 @layer utilities {
-  /* Custom thin scrollbar */
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded-full;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-400;
-  }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
-  /* Sidebar nav active glow */
+  /* Brand active nav state */
   .nav-active {
-    background: rgba(99, 102, 241, 0.15);
-    color: #818CF8;
+    background: rgba(60, 120, 160, 0.15);
+    color: #5A96BE;
   }
   .nav-active svg {
-    color: #818CF8;
+    color: #5A96BE;
   }
 
-  /* Page header gradient */
+  /* Page header — brand dark blue gradient */
   .page-header {
-    background: linear-gradient(135deg, #0F1629 0%, #1a2340 100%);
+    background: linear-gradient(135deg, #0F1A24 0%, #1a2e3f 100%);
   }
 }

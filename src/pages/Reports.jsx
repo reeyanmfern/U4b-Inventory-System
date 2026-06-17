@@ -67,7 +67,7 @@ export default function Reports() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-8 h-8 border-2 border-[#3C78A0] border-t-transparent rounded-full animate-spin"></div>
     </div>
   )
 
@@ -85,7 +85,7 @@ export default function Reports() {
       <div className="page-header px-6 py-6 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-indigo-400 text-xs font-semibold uppercase tracking-widest mb-1">Insights</p>
+            <p className="text-[#5A96BE] text-xs font-semibold uppercase tracking-widest mb-1">Insights</p>
             <h1 className="text-2xl font-bold text-white">Reports</h1>
             <p className="text-white/40 text-sm mt-0.5">Stock value, category breakdown & alerts</p>
           </div>
@@ -101,14 +101,14 @@ export default function Reports() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Inventory Value', value: `RM ${reportData.totalStockValue.toLocaleString()}`, color: 'emerald', bar: 'bg-emerald-500' },
-            { label: 'Total Units', value: reportData.totalItems.toLocaleString(), color: 'indigo', bar: 'bg-indigo-500' },
+            { label: 'Total Units', value: reportData.totalItems.toLocaleString(), color: 'indigo', bar: 'bg-[#3C78A0]' },
             { label: 'Low Stock', value: reportData.lowStockItems.length, color: 'amber', bar: 'bg-amber-500' },
             { label: 'Out of Stock', value: reportData.outOfStockItems.length, color: 'rose', bar: 'bg-rose-500' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className={`h-1 ${card.bar}`}></div>
               <div className="p-4">
-                <p className={`text-xl font-bold ${card.color === 'emerald' ? 'text-emerald-700' : card.color === 'indigo' ? 'text-indigo-700' : card.color === 'amber' ? 'text-amber-700' : 'text-rose-700'}`}>{card.value}</p>
+                <p className={`text-xl font-bold ${card.color === 'emerald' ? 'text-emerald-700' : card.color === 'indigo' ? 'text-[#2C5F80]' : card.color === 'amber' ? 'text-amber-700' : 'text-rose-700'}`}>{card.value}</p>
                 <p className="text-xs font-semibold text-slate-500 mt-0.5 uppercase tracking-wide">{card.label}</p>
               </div>
             </div>
@@ -118,7 +118,7 @@ export default function Reports() {
         {/* Tabs */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-1 flex gap-1">
           {tabs.map(t => (
-            <button key={t.id} onClick={() => setReportType(t.id)} className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${reportType === t.id ? 'bg-[#0F1629] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
+            <button key={t.id} onClick={() => setReportType(t.id)} className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${reportType === t.id ? 'bg-[#0F1A24] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
               {t.label}
             </button>
           ))}
@@ -154,7 +154,7 @@ export default function Reports() {
                         <td className="py-3 px-5">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                              <div className="bg-indigo-500 rounded-full h-1.5" style={{ width: `${pct}%` }}></div>
+                              <div className="bg-[#3C78A0] rounded-full h-1.5" style={{ width: `${pct}%` }}></div>
                             </div>
                             <span className="text-xs text-slate-500 w-10 text-right">{pct}%</span>
                           </div>
@@ -267,7 +267,7 @@ export default function Reports() {
                     <td className="py-3 px-5"><span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs ${rankStyle(i)}`}>{i + 1}</span></td>
                     <td className="py-3 px-4">
                       <p className="font-semibold text-slate-800">{p.name}</p>
-                      {p.code && <p className="text-[10px] font-mono text-indigo-500 mt-0.5">{p.code}</p>}
+                      {p.code && <p className="text-[10px] font-mono text-[#3C78A0] mt-0.5">{p.code}</p>}
                     </td>
                     <td className="py-3 px-4 text-slate-500">{p.category}</td>
                     <td className="py-3 px-4 text-right font-bold text-slate-700">{p.quantity.toLocaleString()}</td>
