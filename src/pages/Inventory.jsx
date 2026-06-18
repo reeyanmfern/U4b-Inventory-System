@@ -302,6 +302,8 @@ export default function Inventory() {
       setBulkApplying(false)
     }
   }
+
+  function resetForm() {
     setFormData({ code: '', name: '', category: 'Bags', sub_category: '', size: 'One Size', variety: '', material: '', weight_grams: '', dimensions: '', price: 0, main_sku: '', image_url: '', status: 'active', quantity: 0 })
     setPastedImage(null); setEditingProduct(null)
   }
