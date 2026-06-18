@@ -22,6 +22,8 @@ export default function Inventory() {
   const [bulkErrors, setBulkErrors] = useState([])   // unmatched codes
   const [bulkApplying, setBulkApplying] = useState(false)
   const bulkInputRef = useRef(null)
+
+  const [showStockModal, setShowStockModal] = useState(false)
   const [stockTarget, setStockTarget] = useState(null)
   const [stockUpdate, setStockUpdate] = useState({ type: 'add', quantity: 1, reason: '' })
 
