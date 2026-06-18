@@ -17,7 +17,11 @@ export default function Inventory() {
   const [pastedImage, setPastedImage] = useState(null)
   const imageInputRef = useRef(null)
 
-  const [showStockModal, setShowStockModal] = useState(false)
+  const [showBulkModal, setShowBulkModal] = useState(false)
+  const [bulkPreview, setBulkPreview] = useState([]) // rows to update
+  const [bulkErrors, setBulkErrors] = useState([])   // unmatched codes
+  const [bulkApplying, setBulkApplying] = useState(false)
+  const bulkInputRef = useRef(null)
   const [stockTarget, setStockTarget] = useState(null)
   const [stockUpdate, setStockUpdate] = useState({ type: 'add', quantity: 1, reason: '' })
 
@@ -158,7 +162,146 @@ export default function Inventory() {
     XLSX.writeFile(wb, `inventory_${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}.xlsx`)
   }
 
-  function resetForm() {
+  function downloadTemplate() {
+    // Always uses ALL products so the template stays complete
+    const templateData = products.map(p => ({
+      'Code': p.code || '',
+      'Product Name': p.name,
+      'Category': p.category,
+      'Size': p.size || '',
+      'Current Stock': p.product_variations?.length > 0
+        ? p.product_variations.reduce((s, v) => s + (v.quantity || 0), 0)
+        : (p.quantity || 0),
+      'New Stock': p.product_variations?.length > 0
+        ? p.product_variations.reduce((s, v) => s + (v.quantity || 0), 0)
+        : (p.quantity || 0),
+      'Price (RM)': p.price || 0,
+      'Status': p.status || 'active',
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(templateData)
+
+    // Column widths
+    ws['!cols'] = [
+      { wch: 10 }, { wch: 30 }, { wch: 15 }, { wch: 12 },
+      { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }
+    ]
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'U4B_Stock_Template')
+    XLSX.writeFile(wb, 'U4B_Stock_Template.xlsx')
+  }
+
+  async function handleBulkUpload(file) {
+    if (!file) return
+    setBulkPreview([])
+    setBulkErrors([])
+
+    try {
+      const buffer = await file.arrayBuffer()
+      const wb = XLSX.read(buffer)
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(ws)
+
+      if (rows.length === 0) {
+        alert('The file appears to be empty.')
+        return
+      }
+
+      // Check required columns exist
+      const firstRow = rows[0]
+      if (!('Code' in firstRow) || !('New Stock' in firstRow)) {
+        alert('Template format is wrong. Make sure the file has "Code" and "New Stock" columns.')
+        return
+      }
+
+      const preview = []
+      const errors = []
+
+      for (const row of rows) {
+        const code = String(row['Code'] || '').trim()
+        if (!code) continue
+
+        const match = products.find(p => p.code && p.code.trim().toLowerCase() === code.toLowerCase())
+
+        if (!match) {
+          errors.push(code)
+          continue
+        }
+
+        const currentStock = match.product_variations?.length > 0
+          ? match.product_variations.reduce((s, v) => s + (v.quantity || 0), 0)
+          : (match.quantity || 0)
+
+        const newStock = row['New Stock'] !== undefined && row['New Stock'] !== '' ? parseInt(row['New Stock']) : null
+        const newPrice = row['Price (RM)'] !== undefined && row['Price (RM)'] !== '' ? parseFloat(row['Price (RM)']) : null
+        const newStatus = row['Status'] ? String(row['Status']).trim().toLowerCase() : null
+
+        // Only include rows where something actually changed
+        const stockChanged = newStock !== null && newStock !== currentStock
+        const priceChanged = newPrice !== null && newPrice !== (match.price || 0)
+        const statusChanged = newStatus && newStatus !== match.status
+
+        if (stockChanged || priceChanged || statusChanged) {
+          preview.push({
+            id: match.id,
+            code: match.code,
+            name: match.name,
+            hasVariations: match.product_variations?.length > 0,
+            currentStock,
+            newStock: newStock !== null ? newStock : currentStock,
+            currentPrice: match.price || 0,
+            newPrice: newPrice !== null ? newPrice : (match.price || 0),
+            currentStatus: match.status,
+            newStatus: newStatus || match.status,
+            stockChanged,
+            priceChanged,
+            statusChanged,
+          })
+        }
+      }
+
+      if (preview.length === 0 && errors.length === 0) {
+        alert('No changes detected — all values in the file match current data.')
+        return
+      }
+
+      setBulkPreview(preview)
+      setBulkErrors(errors)
+      setShowBulkModal(true)
+    } catch (error) {
+      alert('Error reading file: ' + error.message)
+    }
+
+    // Reset file input so same file can be re-uploaded
+    if (bulkInputRef.current) bulkInputRef.current.value = ''
+  }
+
+  async function applyBulkUpdate() {
+    setBulkApplying(true)
+    try {
+      for (const row of bulkPreview) {
+        const updates = {}
+        if (row.priceChanged) updates.price = row.newPrice
+        if (row.statusChanged) updates.status = row.newStatus
+        if (row.stockChanged && !row.hasVariations) updates.quantity = row.newStock
+
+        if (Object.keys(updates).length > 0) {
+          const { error } = await supabase.from('products').update(updates).eq('id', row.id)
+          if (error) throw error
+        }
+      }
+
+      await fetchProducts()
+      setShowBulkModal(false)
+      setBulkPreview([])
+      setBulkErrors([])
+    } catch (error) {
+      alert('Error applying updates: ' + error.message)
+    } finally {
+      setBulkApplying(false)
+    }
+  }
     setFormData({ code: '', name: '', category: 'Bags', sub_category: '', size: 'One Size', variety: '', material: '', weight_grams: '', dimensions: '', price: 0, main_sku: '', image_url: '', status: 'active', quantity: 0 })
     setPastedImage(null); setEditingProduct(null)
   }
@@ -190,6 +333,11 @@ export default function Inventory() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               Export
             </button>
+            <button onClick={() => bulkInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#A0B464] hover:bg-[#7A8C44] text-white text-sm font-semibold transition-colors shadow-lg">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+              Bulk Update
+            </button>
+            <input ref={bulkInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={e => handleBulkUpload(e.target.files?.[0])} />
             <button onClick={() => { resetForm(); setShowModal(true) }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3C78A0] hover:bg-[#5A96BE] text-white text-sm font-semibold transition-colors shadow-lg shadow-[#3C78A0]/30">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               Add Product
@@ -213,7 +361,13 @@ export default function Inventory() {
               <button onClick={() => { setSearchTerm(''); setSelectedCategory('All') }} className="px-3 py-2 text-sm text-[#3C78A0] hover:text-[#2C5F80] font-medium">Clear</button>
             )}
           </div>
-          <p className="text-xs text-slate-400 mt-2">{filteredProducts.length} of {products.length} products</p>
+          <p className="text-xs text-slate-400 mt-2 flex items-center justify-between">
+            <span>{filteredProducts.length} of {products.length} products</span>
+            <button onClick={downloadTemplate} className="text-[#3C78A0] hover:text-[#2C5F80] text-xs font-semibold flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              Download Bulk Update Template
+            </button>
+          </p>
         </div>
 
         {/* Products */}
@@ -425,6 +579,117 @@ export default function Inventory() {
                 <button type="submit" className="flex-1 py-2.5 rounded-xl bg-[#3C78A0] hover:bg-[#2C5F80] text-white font-semibold text-sm transition-colors shadow-lg shadow-[#3C78A0]/20">Save Product</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ── Bulk Update Preview Modal ─────────────────────────── */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Review Bulk Update</h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {bulkPreview.length} product{bulkPreview.length !== 1 ? 's' : ''} will be updated
+                  {bulkErrors.length > 0 && ` · ${bulkErrors.length} code${bulkErrors.length !== 1 ? 's' : ''} not found`}
+                </p>
+              </div>
+              <button onClick={() => setShowBulkModal(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin p-6 space-y-4">
+              {/* Changes table */}
+              {bulkPreview.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Changes to apply</p>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="text-left py-2.5 px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Code</th>
+                          <th className="text-left py-2.5 px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Product</th>
+                          <th className="text-right py-2.5 px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Stock</th>
+                          <th className="text-right py-2.5 px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Price</th>
+                          <th className="text-left py-2.5 px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkPreview.map((row, i) => (
+                          <tr key={row.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                            <td className="py-2.5 px-4 font-mono font-bold text-[#3C78A0] text-xs">{row.code}</td>
+                            <td className="py-2.5 px-4 text-slate-700 text-xs font-medium">{row.name}</td>
+                            <td className="py-2.5 px-4 text-right text-xs">
+                              {row.stockChanged ? (
+                                <span className="flex items-center justify-end gap-1.5">
+                                  <span className="text-slate-400 line-through">{row.currentStock}</span>
+                                  <svg className="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                  <span className="font-bold text-emerald-600">{row.newStock}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">{row.currentStock}</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-4 text-right text-xs">
+                              {row.priceChanged ? (
+                                <span className="flex items-center justify-end gap-1.5">
+                                  <span className="text-slate-400 line-through">RM {row.currentPrice}</span>
+                                  <svg className="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                  <span className="font-bold text-emerald-600">RM {row.newPrice}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">RM {row.currentPrice}</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-4 text-xs">
+                              {row.statusChanged ? (
+                                <span className="flex items-center gap-1.5">
+                                  <span className="text-slate-400 line-through">{row.currentStatus}</span>
+                                  <svg className="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                  <span className="font-bold text-emerald-600">{row.newStatus}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">{row.currentStatus}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Unmatched codes */}
+              {bulkErrors.length > 0 && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-1.5">
+                    {bulkErrors.length} code{bulkErrors.length !== 1 ? 's' : ''} not found in inventory — skipped
+                  </p>
+                  <p className="text-xs text-amber-600 font-mono">{bulkErrors.join(', ')}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 flex gap-3 bg-white rounded-b-2xl">
+              <button onClick={() => setShowBulkModal(false)} disabled={bulkApplying} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-colors">
+                Cancel
+              </button>
+              {bulkPreview.length > 0 && (
+                <button onClick={applyBulkUpdate} disabled={bulkApplying} className="flex-1 py-2.5 rounded-xl bg-[#A0B464] hover:bg-[#7A8C44] text-white font-semibold text-sm transition-colors disabled:opacity-60 shadow-sm">
+                  {bulkApplying ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Applying…
+                    </span>
+                  ) : `Apply ${bulkPreview.length} Update${bulkPreview.length !== 1 ? 's' : ''}`}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
